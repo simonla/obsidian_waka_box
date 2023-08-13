@@ -26,7 +26,7 @@ export default class WakaBoxPlugin extends Plugin {
 					new Notice('Display Waka Time: Please enter your API key in the settings.', 5000);
 					return;
 				}
-				const date = new Date().toISOString().slice(0, 10);
+				const date = moment().format("YYYY-MM-DD");
 				if (this.summaryFetcher != undefined) {
 					this.summaryFetcher.requestWakaTimeSummary(this.settings.apiKey, date, true, this.onFetchedSummary);
 				}
@@ -34,14 +34,13 @@ export default class WakaBoxPlugin extends Plugin {
 		})
 		this.addCommand({
 			id: "wakabox-refresh-yesterday",
-			name: "Refetch yesterday's data",
+			name: "Force refetch yesterday's data",
 			callback: () => {
 				if (this.settings.apiKey.trim() == '') {
 					new Notice('Display Waka Time: Please enter your API key in the settings.', 5000);
 					return;
 				}
-				const yesterday = new Date().getTime() - 24 * 60 * 60 * 1000;
-				const date = new Date(yesterday).toISOString().slice(0, 10);
+				const date = moment().subtract(1, 'days').format("YYYY-MM-DD");
 				if (this.summaryFetcher != undefined) {
 					this.summaryFetcher.requestWakaTimeSummary(this.settings.apiKey, date, true, this.onFetchedSummary);
 				}
@@ -71,12 +70,12 @@ export default class WakaBoxPlugin extends Plugin {
 		}
 		this.summaryFetcher = new SummaryDataFetcher(this.app);
 		// TODO fetch previous data if open a file from the same day
-		const date = new Date().toISOString().slice(0, 10);
+		const date = moment().format("YYYY-MM-DD");
 		this.summaryFetcher.requestWakaTimeSummary(this.settings.apiKey, date, false, this.onFetchedSummary);
 		const interval = 60 * 60 * 1000;
 		this.registerInterval(window.setInterval(() => {
 			if (this.summaryFetcher != undefined) {
-				const date = new Date().toISOString().slice(0, 10);
+				const date = moment().format("YYYY-MM-DD");
 				this.summaryFetcher.requestWakaTimeSummary(this.settings.apiKey, date, false, this.onFetchedSummary);
 			}
 		}, interval));
@@ -102,7 +101,7 @@ export default class WakaBoxPlugin extends Plugin {
 			this.processDailyNote(dailyNode, summary, fromCache);
 		}
 		if (!fromCache) {
-			new Notice("WakaTime box: " + momentDate.format("YYYY-MM-DD") + " refreshed", 1500);
+			new Notice("WakaTime box: " + momentDate.format("YYYY-MM-DD") + " refreshed", 5000);
 		}
 	}
 
