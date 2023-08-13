@@ -101,6 +101,9 @@ export default class WakaBoxPlugin extends Plugin {
 		} else {
 			this.processDailyNote(dailyNode, summary, fromCache);
 		}
+		if (!fromCache) {
+			new Notice("WakaTime box: " + momentDate.format("YYYY-MM-DD") + " refreshed", 1500);
+		}
 	}
 
 	processDailyNote(file: TFile, summary: Summary, fromCache: boolean) {
