@@ -70,7 +70,7 @@ export default class WakaBoxPlugin extends Plugin {
 		})
 		this.addCommand({
 			id: "wakabox-refresh-manual",
-			name: "Fetch sepcific date's data and copy to clipboard",
+			name: "Fetch specific date's data and copy to clipboard",
 			callback: () => {
 				if (this.settings.apiKey.trim() == '') {
 					new Notice('Display Waka Time: Please enter your API key in the settings.', 5000);
