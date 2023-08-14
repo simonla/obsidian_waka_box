@@ -1,4 +1,4 @@
-import { App, Notice, Plugin, PluginSettingTab, Setting, request, moment, TFile, normalizePath } from 'obsidian';
+import { App, Notice, Plugin, PluginSettingTab, Setting, request, moment, TFile, normalizePath, Modal } from 'obsidian';
 import { Summary } from './model';
 import { appHasDailyNotesPluginLoaded, createDailyNote, getAllDailyNotes, getDailyNote } from "obsidian-daily-notes-interface";
 
@@ -18,6 +18,28 @@ export default class WakaBoxPlugin extends Plugin {
 
 	async onload() {
 		this.addSettingTab(new WakaBoxSettingTab(this.app, this));
+		this.app.workspace.onLayoutReady(() => {
+			this.onLayoutReady();
+		});
+	}
+
+	onLayoutReady() {
+		if (!appHasDailyNotesPluginLoaded()) {
+			new Notice('Display Waka Time: Please Enable Daily Notes plugin.', 5000);
+		}
+		this.loadSettings().then(() => {
+			if (this.settings.apiKey.trim() == '') {
+				new Notice('Display Waka Time: Please enter your API key in the settings.', 5000);
+				return;
+			}
+			this.onGetAPIKey();
+		});
+	}
+
+	onGetAPIKey() {
+		if (this.settings.apiKey.trim() == '') {
+			return;
+		}
 		this.addCommand({
 			id: "wakabox-refresh-today",
 			name: "Force refetch today's data",
@@ -46,28 +68,36 @@ export default class WakaBoxPlugin extends Plugin {
 				}
 			}
 		})
-		this.app.workspace.onLayoutReady(() => {
-			this.onLayoutReady();
-		});
-	}
-
-	onLayoutReady() {
-		if (!appHasDailyNotesPluginLoaded()) {
-			new Notice('Display Waka Time: Please Enable Daily Notes plugin.', 5000);
-		}
-		this.loadSettings().then(() => {
-			if (this.settings.apiKey.trim() == '') {
-				new Notice('Display Waka Time: Please enter your API key in the settings.', 5000);
-				return;
+		this.addCommand({
+			id: "wakabox-refresh-manual",
+			name: "Fetch sepcific date's data and copy to clipboard",
+			callback: () => {
+				if (this.settings.apiKey.trim() == '') {
+					new Notice('Display Waka Time: Please enter your API key in the settings.', 5000);
+					return;
+				}
+				new ManualModal(this.app, (result: string) => {
+					try {
+						const date = moment(result).format("YYYY-MM-DD");
+						if (this.summaryFetcher != undefined) {
+							this.summaryFetcher.requestWakaTimeSummary(this.settings.apiKey, date, true, (summary: Summary | undefined, _: boolean) => {
+								if (summary == undefined) {
+									console.warn("Display Waka Time: No summary data received");
+									return;
+								}
+								const box = this.getBoxText(summary);
+								navigator.clipboard.writeText(box).then(() => {
+									new Notice("WakaTime box: " + date + " copied to clipboard", 3000);
+								});
+							});
+						}
+					} catch (e) {
+						new Notice(`Display Waka Time: fail due to ${e}`, 5000);
+						return;
+					}
+				}).open();
 			}
-			this.onGetAPIKey();
-		});
-	}
-
-	onGetAPIKey() {
-		if (this.settings.apiKey.trim() == '') {
-			return;
-		}
+		})
 		this.summaryFetcher = new SummaryDataFetcher(this.app);
 		// TODO fetch previous data if open a file from the same day
 		const date = moment().format("YYYY-MM-DD");
@@ -108,41 +138,7 @@ export default class WakaBoxPlugin extends Plugin {
 	processDailyNote(file: TFile, summary: Summary, fromCache: boolean) {
 		console.log("refreshing daily note. fromCache: " + fromCache + ", file: " + file.name);
 		this.app.vault.process(file, (data: string) => {
-			var box = "";
-			box += "```wakatime"
-			box += "\n";
-			var count = 0;
-			var maxNameLength = 0;
-			var maxTextLength = 0;
-			var maxPercentLength = 0;
-			summary.data[0].languages.forEach((language) => {
-				if (count++ > 5) {
-					return;
-				}
-				if (language.name.length > maxNameLength) {
-					maxNameLength = language.name.length;
-				}
-				if (language.text.length > maxTextLength) {
-					maxTextLength = language.text.length;
-				}
-				if (language.percent.toString().length > maxPercentLength) {
-					maxPercentLength = language.percent.toString().length;
-				}
-			});
-			count = 0;
-			summary.data[0].languages.forEach((language) => {
-				if (count++ > 5) {
-					return;
-				}
-				const name = language.name.padEnd(maxNameLength, " ");
-				const text = language.text.padEnd(maxTextLength, " ");
-				const percent = language.percent.toString().padStart(maxPercentLength, " ");
-				const bar = this.generateBarChart(language.percent, 20);
-				const padding = " ".repeat(5);
-				const line = `${name}${padding}${text}${padding}${bar}${padding}${percent} %\n`;
-				box += line;
-			});
-			box += "```"
+			var box = this.getBoxText(summary);
 			const exists = data.includes("```wakatime");
 			if (exists) {
 				data = data.replace(/```wakatime[\s\S]*```/g, box);
@@ -151,6 +147,45 @@ export default class WakaBoxPlugin extends Plugin {
 			}
 			return data;
 		});
+	}
+
+	private getBoxText(summary: Summary) {
+		var box = "";
+		box += "```wakatime";
+		box += "\n";
+		var count = 0;
+		var maxNameLength = 0;
+		var maxTextLength = 0;
+		var maxPercentLength = 0;
+		summary.data[0].languages.forEach((language) => {
+			if (count++ > 5) {
+				return;
+			}
+			if (language.name.length > maxNameLength) {
+				maxNameLength = language.name.length;
+			}
+			if (language.text.length > maxTextLength) {
+				maxTextLength = language.text.length;
+			}
+			if (language.percent.toString().length > maxPercentLength) {
+				maxPercentLength = language.percent.toString().length;
+			}
+		});
+		count = 0;
+		summary.data[0].languages.forEach((language) => {
+			if (count++ > 5) {
+				return;
+			}
+			const name = language.name.padEnd(maxNameLength, " ");
+			const text = language.text.padEnd(maxTextLength, " ");
+			const percent = language.percent.toString().padStart(maxPercentLength, " ");
+			const bar = this.generateBarChart(language.percent, 20);
+			const padding = " ".repeat(5);
+			const line = `${name}${padding}${text}${padding}${bar}${padding}${percent} %\n`;
+			box += line;
+		});
+		box += "```";
+		return box;
 	}
 
 	generateBarChart(percent: number, size: number): string {
@@ -245,6 +280,10 @@ class SummaryDataFetcher {
 					console.log("success request for " + date + " from wakatime API");
 					fetcher.saveToCache(date, summary);
 					callback(summary, false);
+				}).catch((error) => {
+					console.error("Display Waka Time: Error requesting WakaTime summary: " + error);
+					new Notice('Display Waka Time: Error requesting WakaTime summary: ' + error, 5000);
+					callback(undefined, false);
 				});
 			}
 			if (force) {
@@ -291,5 +330,46 @@ class WakaBoxSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 					this.plugin.onGetAPIKey();
 				}));
+	}
+}
+
+export class ManualModal extends Modal {
+	onResult: (result: string) => void;
+	result: string = "";
+
+	constructor(app: App, onResult: (result: string) => void) {
+		super(app);
+		this.onResult = onResult;
+	}
+
+	onOpen() {
+		let { contentEl } = this;
+		contentEl.createEl("h1", { text: "Manual fetch WakaTime box" });
+
+		new Setting(contentEl)
+			.setName("Enter the date you want to fetch")
+			.setDesc("Format: YYYY-MM-DD")
+			.addText((text) => {
+				const date = moment().format("YYYY-MM-DD");
+				text.setValue(date);
+				text.onChange((value) => {
+					this.result = value
+				})
+			});
+
+		new Setting(contentEl)
+			.addButton((btn) =>
+				btn
+					.setButtonText("Submit")
+					.setCta()
+					.onClick(() => {
+						this.close();
+						this.onResult(this.result);
+					}));
+	}
+
+	onClose() {
+		let { contentEl } = this;
+		contentEl.empty();
 	}
 }
