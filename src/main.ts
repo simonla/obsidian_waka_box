@@ -25,11 +25,11 @@ export default class WakaBoxPlugin extends Plugin {
 
 	onLayoutReady() {
 		if (!appHasDailyNotesPluginLoaded()) {
-			new Notice('Display Waka Time: Please Enable Daily Notes plugin.', 5000);
+			new Notice('WakaTime box: please enable daily notes plugin.', 5000);
 		}
 		this.loadSettings().then(() => {
 			if (this.settings.apiKey.trim() == '') {
-				new Notice('Display Waka Time: Please enter your API key in the settings.', 5000);
+				new Notice('WakaTime box: please enter your API key in the settings.', 5000);
 				return;
 			}
 			this.onGetAPIKey();
@@ -41,11 +41,11 @@ export default class WakaBoxPlugin extends Plugin {
 			return;
 		}
 		this.addCommand({
-			id: "wakabox-refresh-today",
+			id: "refresh-today",
 			name: "Force refetch today's data",
 			callback: () => {
 				if (this.settings.apiKey.trim() == '') {
-					new Notice('Display Waka Time: Please enter your API key in the settings.', 5000);
+					new Notice('WakaTime box: please enter your API key in the settings.', 5000);
 					return;
 				}
 				const date = moment().format("YYYY-MM-DD");
@@ -55,11 +55,11 @@ export default class WakaBoxPlugin extends Plugin {
 			}
 		})
 		this.addCommand({
-			id: "wakabox-refresh-yesterday",
+			id: "refresh-yesterday",
 			name: "Force refetch yesterday's data",
 			callback: () => {
 				if (this.settings.apiKey.trim() == '') {
-					new Notice('Display Waka Time: Please enter your API key in the settings.', 5000);
+					new Notice('WakaTime box: please enter your API key in the settings.', 5000);
 					return;
 				}
 				const date = moment().subtract(1, 'days').format("YYYY-MM-DD");
@@ -69,11 +69,11 @@ export default class WakaBoxPlugin extends Plugin {
 			}
 		})
 		this.addCommand({
-			id: "wakabox-refresh-manual",
+			id: "refresh-manual",
 			name: "Fetch specific date's data and copy to clipboard",
 			callback: () => {
 				if (this.settings.apiKey.trim() == '') {
-					new Notice('Display Waka Time: Please enter your API key in the settings.', 5000);
+					new Notice('WakaTime box: please enter your API key in the settings.', 5000);
 					return;
 				}
 				new ManualModal(this.app, (result: string) => {
@@ -82,7 +82,7 @@ export default class WakaBoxPlugin extends Plugin {
 						if (this.summaryFetcher != undefined) {
 							this.summaryFetcher.requestWakaTimeSummary(this.settings.apiKey, date, true, (summary: Summary | undefined, _: boolean) => {
 								if (summary == undefined) {
-									console.warn("Display Waka Time: No summary data received");
+									console.warn("WakaTime box: no summary data received");
 									return;
 								}
 								const box = this.getBoxText(summary);
@@ -92,7 +92,7 @@ export default class WakaBoxPlugin extends Plugin {
 							});
 						}
 					} catch (e) {
-						new Notice(`Display Waka Time: fail due to ${e}`, 5000);
+						new Notice(`WakaTime box: fail due to ${e}`, 5000);
 						return;
 					}
 				}).open();
@@ -117,7 +117,7 @@ export default class WakaBoxPlugin extends Plugin {
 
 	onFetchedSummary = (summary: Summary | undefined, fromCache: boolean) => {
 		if (summary == undefined) {
-			console.warn("Display Waka Time: No summary data received");
+			console.warn("WakaTime box: no summary data received");
 			return;
 		}
 		const momentDate = moment.utc(summary.start).local();
@@ -255,7 +255,7 @@ class SummaryDataFetcher {
 			const summary = JSON.parse(data) as Summary;
 			return summary;
 		} catch (e) {
-			console.error("Display Waka Time: Error loading WakaTime summary from cache: " + e);
+			console.error("WakaTime box: Error loading WakaTime summary from cache: " + e);
 		}
 		return undefined;
 	}
@@ -264,7 +264,7 @@ class SummaryDataFetcher {
 		try {
 			await this.app.vault.adapter.write(normalizePath(this.cacheDir + "/" + cacheKey), JSON.stringify(summary));
 		} catch (e) {
-			console.error("Display Waka Time: Error saving WakaTime summary to cache: " + e);
+			console.error("WakaTime box: Error saving WakaTime summary to cache: " + e);
 		}
 	}
 
@@ -281,8 +281,8 @@ class SummaryDataFetcher {
 					fetcher.saveToCache(date, summary);
 					callback(summary, false);
 				}).catch((error) => {
-					console.error("Display Waka Time: Error requesting WakaTime summary: " + error);
-					new Notice('Display Waka Time: Error requesting WakaTime summary: ' + error, 5000);
+					console.error("WakaTime box: error requesting WakaTime summary: " + error);
+					new Notice('WakaTime box: error requesting WakaTime summary: ' + error, 5000);
 					callback(undefined, false);
 				});
 			}
@@ -299,8 +299,8 @@ class SummaryDataFetcher {
 				fetch(this);
 			});
 		} catch (e) {
-			console.error("Display Waka Time: Error requesting WakaTime summary: " + e);
-			new Notice('Display Waka Time: Error requesting WakaTime summary: ' + e, 5000);
+			console.error("WakaTime box: error requesting WakaTime summary: " + e);
+			new Notice('WakaTime box: error requesting WakaTime summary: ' + e, 5000);
 			callback(undefined, false);
 		}
 	}
