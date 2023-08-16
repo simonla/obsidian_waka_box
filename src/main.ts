@@ -138,7 +138,7 @@ export default class WakaBoxPlugin extends Plugin {
 	processDailyNote(file: TFile, summary: Summary, fromCache: boolean) {
 		console.log("refreshing daily note. fromCache: " + fromCache + ", file: " + file.name);
 		this.app.vault.process(file, (data: string) => {
-			var box = this.getBoxText(summary);
+			let box = this.getBoxText(summary);
 			const exists = data.includes("```wakatime");
 			if (exists) {
 				data = data.replace(/```wakatime[\s\S]*```/g, box);
@@ -150,13 +150,13 @@ export default class WakaBoxPlugin extends Plugin {
 	}
 
 	private getBoxText(summary: Summary) {
-		var box = "";
+		let box = "";
 		box += "```wakatime";
 		box += "\n";
-		var count = 0;
-		var maxNameLength = 0;
-		var maxTextLength = 0;
-		var maxPercentLength = 0;
+		let count = 0;
+		let maxNameLength = 0;
+		let maxTextLength = 0;
+		let maxPercentLength = 0;
 		summary.data[0].languages.forEach((language) => {
 			if (count++ > 5) {
 				return;
@@ -268,36 +268,39 @@ class SummaryDataFetcher {
 		}
 	}
 
+	async fetchViaAPI(url: string, date: string): Promise<Summary | undefined> {
+		console.log("start request for " + date);
+		try {
+			const result = await request(url);
+			const summary = JSON.parse(result) as Summary;
+			console.log("success request for " + date + " from wakatime API");
+			this.saveToCache(date, summary);
+			return summary;
+		} catch (error) {
+			console.error("WakaTime box: error requesting WakaTime summary: " + error);
+			new Notice('WakaTime box: error requesting WakaTime summary: ' + error, 5000);
+			return undefined;
+		}
+	}
+
 	// read cache or fetch data from wakatime
-	requestWakaTimeSummary(apiKey: String, date: String, force: boolean, callback: (summary: Summary | undefined, fromCache: boolean) => void) {
+	async requestWakaTimeSummary(apiKey: String, date: string, force: boolean, callback: (summary: Summary | undefined, fromCache: boolean) => void) {
 		const baseUrl = "https://wakatime.com/api/v1/users/current/summaries"
 		const url = baseUrl + "?start=" + date + "&end=" + date + "&api_key=" + apiKey;
 		try {
-			function fetch(fetcher: SummaryDataFetcher) {
-				console.log("start request for " + date);
-				request({ url: url }).then((result) => {
-					const summary = JSON.parse(result) as Summary;
-					console.log("success request for " + date + " from wakatime API");
-					fetcher.saveToCache(date, summary);
-					callback(summary, false);
-				}).catch((error) => {
-					console.error("WakaTime box: error requesting WakaTime summary: " + error);
-					new Notice('WakaTime box: error requesting WakaTime summary: ' + error, 5000);
-					callback(undefined, false);
-				});
-			}
 			if (force) {
-				fetch(this);
+				const result = await this.fetchViaAPI(url, date);
+				callback(result, false);
 				return;
 			}
-			this.loadFromCache(date).then((result) => {
-				if (result != undefined) {
-					console.log("success request for " + date + " from cache");
-					callback(result, true);
-					return;
-				}
-				fetch(this);
-			});
+			const cacheResult = await this.loadFromCache(date);
+			if (cacheResult != undefined) {
+				console.log("success request for " + date + " from cache");
+				callback(cacheResult, true);
+				return;
+			}
+			const apiResult = await this.fetchViaAPI(url, date);
+			callback(apiResult, false);
 		} catch (e) {
 			console.error("WakaTime box: error requesting WakaTime summary: " + e);
 			new Notice('WakaTime box: error requesting WakaTime summary: ' + e, 5000);

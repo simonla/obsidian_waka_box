@@ -1,7 +1,7 @@
 {
 	"id": "waka_time_box",
 	"name": "Waka time box",
-	"version": "1.0.6",
+	"version": "1.0.7",
 	"minAppVersion": "0.15.0",
 	"description": "Show daily coding activity from WakaTime",
 	"author": "complexzeng",
