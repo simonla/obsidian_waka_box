@@ -366,8 +366,9 @@ class WakaBoxSettingTab extends PluginSettingTab {
 		new Setting(apiUrlType)
 			.setName('WakaTime API Url Server Type')
 			.addDropdown(dropdown => {
-				dropdown.setValue(this.plugin.settings.apiUrlType)
+				dropdown
 					.addOptions(ApiUrlTypeRecord)
+					.setValue(this.plugin.settings.apiUrlType)
 					.onChange(async (value) => {
 						this.plugin.settings.apiUrlType = value;
 						await this.plugin.saveSettings();
@@ -381,37 +382,20 @@ class WakaBoxSettingTab extends PluginSettingTab {
 									this.plugin.settings.apiUrl = 'https://wakapi.dev/api/compat/wakatime/v1';
 									break;
 							}
-							apiUrl.empty();
-							new Setting(apiUrl)
-								.setName('WakaTime API Url')
-								.setDesc('The WakaTime API Url being used now')
-								.addText(text => text
-									.setValue(this.plugin.settings.apiUrl)
-									.setPlaceholder('https://wakapi.dev/api/compat/wakatime/v1')
-									.onChange(async (value) => {
-										this.plugin.settings.apiUrl = value;
-										await this.plugin.saveSettings();
-									}).inputEl.size = 60)
-								.setDisabled(true);
+							this.createWakaUrlSettingShow(apiUrl);
 						} else {
-							apiUrl.empty();
 							this.plugin.settings.apiUrl = this.plugin.settings.apiCustomUrl;
 							await this.plugin.saveSettings();
-							new Setting(apiUrl)
-								.setName('WakaTime API Url Input')
-								.setDesc('Enter your own Wakapi API Url Or Other Server, Attention: "/api/compat/wakatime/v1" is required if you use your own wakapi server')
-								.addText(text => text
-									.setValue(this.plugin.settings.apiCustomUrl)
-									.setPlaceholder('https://wakapi.dev/api/compat/wakatime/v1')
-									.onChange(async (value) => {
-										this.plugin.settings.apiUrl = value;
-										this.plugin.settings.apiCustomUrl = value;
-										await this.plugin.saveSettings();
-									}).inputEl.size = 60);
+							this.createCustomUrlInputSetting(apiUrl);
 						}
 					})
 
 			});
+		if (this.plugin.settings.apiUrlType != ApiUrlType.Custom) {
+			this.createWakaUrlSettingShow(apiUrl);
+		} else {
+			this.createCustomUrlInputSetting(apiUrl);
+		}
 
 		new Setting(containerEl)
 			.setName('Test Connection')
@@ -421,6 +405,37 @@ class WakaBoxSettingTab extends PluginSettingTab {
 				.onClick(async () => {
 					await this.testConnection();
 				}));
+	}
+
+	private createWakaUrlSettingShow(apiUrl: HTMLDivElement) {
+		apiUrl.empty();
+		new Setting(apiUrl)
+			.setName('WakaTime API Url')
+			.setDesc('The WakaTime API Url being used now')
+			.addText(text => text
+				.setValue(this.plugin.settings.apiUrl)
+				.setPlaceholder('https://wakapi.dev/api/compat/wakatime/v1')
+				.onChange(async (value) => {
+					this.plugin.settings.apiUrl = value;
+					await this.plugin.saveSettings();
+				}).inputEl.size = 60)
+			.setDisabled(true);
+	}
+
+	private  createCustomUrlInputSetting(apiUrl: HTMLDivElement) {
+		apiUrl.empty();
+
+		new Setting(apiUrl)
+			.setName('WakaTime API Url Input')
+			.setDesc('Enter your own Wakapi API Url Or Other Server, Attention: "/api/compat/wakatime/v1" is required if you use your own wakapi server')
+			.addText(text => text
+				.setValue(this.plugin.settings.apiCustomUrl)
+				.setPlaceholder('https://wakapi.dev/api/compat/wakatime/v1')
+				.onChange(async (value) => {
+					this.plugin.settings.apiUrl = value;
+					this.plugin.settings.apiCustomUrl = value;
+					await this.plugin.saveSettings();
+				}).inputEl.size = 60);
 	}
 
 	private async testConnection() {
