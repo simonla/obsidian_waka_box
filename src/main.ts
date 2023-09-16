@@ -415,7 +415,7 @@ class WakaBoxSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Test Connection')
-			.setDesc('Test the connection to the WakaTime API')
+			.setDesc('Test the connection to the API server')
 			.addButton(button => button
 				.setButtonText('Test')
 				.onClick(async () => {
