@@ -364,7 +364,7 @@ class WakaBoxSettingTab extends PluginSettingTab {
 
 			);
 		new Setting(apiUrlType)
-			.setName('WakaTime API Url Server Type')
+			.setName('WakaTime API url server type')
 			.addDropdown(dropdown => {
 				dropdown
 					.addOptions(ApiUrlTypeRecord)
@@ -398,7 +398,7 @@ class WakaBoxSettingTab extends PluginSettingTab {
 		}
 
 		new Setting(containerEl)
-			.setName('Test Connection')
+			.setName('test connection')
 			.setDesc('Test the connection to the API server')
 			.addButton(button => button
 				.setButtonText('Test')
@@ -427,7 +427,7 @@ class WakaBoxSettingTab extends PluginSettingTab {
 
 		new Setting(apiUrl)
 			.setName('WakaTime API Url Input')
-			.setDesc('Enter your own Wakapi API Url Or Other Server, Attention: "/api/compat/wakatime/v1" is required if you use your own wakapi server')
+			.setDesc('Enter your own Wakapi API url or other Server, attention: "/api/compat/wakatime/v1" is required if you use your own Wakapi server')
 			.addText(text => text
 				.setValue(this.plugin.settings.apiCustomUrl)
 				.setPlaceholder('https://wakapi.dev/api/compat/wakatime/v1')
@@ -443,7 +443,7 @@ class WakaBoxSettingTab extends PluginSettingTab {
 		const now = moment().format("YYYY-MM-DD");
 		const url = this.plugin.settings.apiUrl + `/users/current/summaries?start=${yesterday}&end=${now}&api_key=` + this.plugin.settings.apiKey;
 		try {
-			const result = await request(url);
+			await request(url);
 			new Notice('WakaTime box: connection test successful', 5000);
 		} catch (error) {
 			console.error("WakaTime box: error requesting WakaTime summary: " + error);
@@ -500,7 +500,7 @@ export class ManualModal extends Modal {
 			return false;
 		}
 		if (dateResult == 'Invalid date') {
-			new Notice(`WakaTime box: fail due to Invalid date`, 5000);
+			new Notice(`WakaTime box: fail due to invalid date`, 5000);
 			return false;
 		}
 		return true;
