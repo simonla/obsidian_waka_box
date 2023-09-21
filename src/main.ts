@@ -411,7 +411,7 @@ class WakaBoxSettingTab extends PluginSettingTab {
 		apiUrl.empty();
 		new Setting(apiUrl)
 			.setName('WakaTime API Url')
-			.setDesc('The WakaTime API Url being used now')
+			.setDesc('The WakaTime API url being used now')
 			.addText(text => text
 				.setValue(this.plugin.settings.apiUrl)
 				.setPlaceholder('https://wakapi.dev/api/compat/wakatime/v1')
@@ -427,7 +427,7 @@ class WakaBoxSettingTab extends PluginSettingTab {
 
 		new Setting(apiUrl)
 			.setName('WakaTime API Url Input')
-			.setDesc('Enter your own Wakapi API url or other Server, attention: "/api/compat/wakatime/v1" is required if you use your own Wakapi server')
+			.setDesc('Enter your own Wakapi API url or other server, attention: "/api/compat/wakatime/v1" is required if you use your own Wakapi server')
 			.addText(text => text
 				.setValue(this.plugin.settings.apiCustomUrl)
 				.setPlaceholder('https://wakapi.dev/api/compat/wakatime/v1')
