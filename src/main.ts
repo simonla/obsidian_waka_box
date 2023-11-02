@@ -6,10 +6,12 @@ import { appHasDailyNotesPluginLoaded, createDailyNote, getAllDailyNotes, getDai
 
 interface WakaBoxPluginSettings {
 	apiKey: string;
+	apiUrl: string;
 }
 
 const DEFAULT_SETTINGS: WakaBoxPluginSettings = {
-	apiKey: ''
+	apiKey: '',
+	apiUrl: 'https://wakatime.com/api/v1',
 }
 
 export default class WakaBoxPlugin extends Plugin {
@@ -50,7 +52,7 @@ export default class WakaBoxPlugin extends Plugin {
 				}
 				const date = moment().format("YYYY-MM-DD");
 				if (this.summaryFetcher != undefined) {
-					this.summaryFetcher.requestWakaTimeSummary(this.settings.apiKey, date, true, this.onFetchedSummary);
+					this.summaryFetcher.requestWakaTimeSummary(this.settings,  date, true, this.onFetchedSummary);
 				}
 			}
 		})
@@ -64,7 +66,7 @@ export default class WakaBoxPlugin extends Plugin {
 				}
 				const date = moment().subtract(1, 'days').format("YYYY-MM-DD");
 				if (this.summaryFetcher != undefined) {
-					this.summaryFetcher.requestWakaTimeSummary(this.settings.apiKey, date, true, this.onFetchedSummary);
+					this.summaryFetcher.requestWakaTimeSummary(this.settings, date, true, this.onFetchedSummary);
 				}
 			}
 		})
@@ -80,7 +82,7 @@ export default class WakaBoxPlugin extends Plugin {
 					try {
 						const date = moment(result).format("YYYY-MM-DD");
 						if (this.summaryFetcher != undefined) {
-							this.summaryFetcher.requestWakaTimeSummary(this.settings.apiKey, date, true, (summary: Summary | undefined, _: boolean) => {
+							this.summaryFetcher.requestWakaTimeSummary(this.settings, date, true, (summary: Summary | undefined, _: boolean) => {
 								if (summary == undefined) {
 									console.warn("WakaTime box: no summary data received");
 									return;
@@ -101,12 +103,12 @@ export default class WakaBoxPlugin extends Plugin {
 		this.summaryFetcher = new SummaryDataFetcher(this.app);
 		// TODO fetch previous data if open a file from the same day
 		const date = moment().format("YYYY-MM-DD");
-		this.summaryFetcher.requestWakaTimeSummary(this.settings.apiKey, date, false, this.onFetchedSummary);
+		this.summaryFetcher.requestWakaTimeSummary(this.settings, date, false, this.onFetchedSummary);
 		const interval = 60 * 60 * 1000;
 		this.registerInterval(window.setInterval(() => {
 			if (this.summaryFetcher != undefined) {
 				const date = moment().format("YYYY-MM-DD");
-				this.summaryFetcher.requestWakaTimeSummary(this.settings.apiKey, date, false, this.onFetchedSummary);
+				this.summaryFetcher.requestWakaTimeSummary(this.settings, date, false, this.onFetchedSummary);
 			}
 		}, interval));
 	}
@@ -284,9 +286,9 @@ class SummaryDataFetcher {
 	}
 
 	// read cache or fetch data from wakatime
-	async requestWakaTimeSummary(apiKey: String, date: string, force: boolean, callback: (summary: Summary | undefined, fromCache: boolean) => void) {
-		const baseUrl = "https://wakatime.com/api/v1/users/current/summaries"
-		const url = baseUrl + "?start=" + date + "&end=" + date + "&api_key=" + apiKey;
+	async requestWakaTimeSummary(settings: WakaBoxPluginSettings, date: string, force: boolean, callback: (summary: Summary | undefined, fromCache: boolean) => void) {
+		const baseUrl =  this.getBaseUrl(settings) +  "/users/current/summaries";
+		const url = baseUrl + "?start=" + date + "&end=" + date + "&api_key=" + this.getApiKey(settings);
 		try {
 			if (force) {
 				const result = await this.fetchViaAPI(url, date);
@@ -308,6 +310,21 @@ class SummaryDataFetcher {
 		}
 	}
 
+	private getApiKey(settings: WakaBoxPluginSettings) {
+		if (settings.apiKey.trim() == '') {
+			new Notice('WakaTime box: please enter your API key in the settings.', 5000);
+			return "";
+		}
+		return settings.apiKey;
+	}
+
+	private getBaseUrl(settings: WakaBoxPluginSettings) {
+		if (settings.apiUrl.trim() == '') {
+			return "https://wakatime.com/api/v1";
+		}
+		return settings.apiUrl;
+	}
+
 }
 
 class WakaBoxSettingTab extends PluginSettingTab {
@@ -322,17 +339,80 @@ class WakaBoxSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 
 		containerEl.empty();
+		const apiUrlKey = containerEl.createEl('div');
+		const apiUrl = containerEl.createEl('div');
+
+		new Setting(apiUrlKey)
+			.setName('WakaTime API key')
+			.addText(text => {
+					text
+						.setValue(this.plugin.settings.apiKey)
+						.setPlaceholder('Enter your API key')
+						.onChange(async (value) => {
+							this.plugin.settings.apiKey = value;
+							await this.plugin.saveSettings();
+						});
+					text.inputEl.size = 60;
+				}
+
+			);
+
+		this.createCustomUrlInputSetting(apiUrl);
 
 		new Setting(containerEl)
-			.setName('WakaTime API key')
-			.addText(text => text
-				.setValue(this.plugin.settings.apiKey)
-				.setPlaceholder('Enter your API key')
-				.onChange(async (value) => {
-					this.plugin.settings.apiKey = value;
-					await this.plugin.saveSettings();
-					this.plugin.onGetAPIKey();
+			.setName('test connection')
+			.setDesc('Test the connection to the API server')
+			.addButton(button => button
+				.setButtonText('Test')
+				.onClick(async () => {
+					await this.testConnection();
 				}));
+	}
+
+	private  createCustomUrlInputSetting(apiUrl: HTMLDivElement) {
+		apiUrl.empty();
+
+		const settings = new Setting(apiUrl)
+			.setName('WakaTime API Url Input')
+			.setDesc('Enter your own Wakapi API url or other server, attention: "/api/compat/wakatime/v1" is required if you use your own Wakapi server')
+			.addText(text => text
+				.setValue(this.plugin.settings.apiUrl)
+				.setPlaceholder(DEFAULT_SETTINGS.apiUrl)
+				.onChange(async (value) => {
+					this.plugin.settings.apiUrl = value;
+					await this.plugin.saveSettings();
+				}).inputEl.size = 45);
+		settings.addExtraButton(button => {
+				button
+					.setIcon('reset')
+					.setTooltip('Set WakaTime API Url to default')
+					.onClick(async () => {
+						this.plugin.settings.apiUrl = DEFAULT_SETTINGS.apiUrl;
+						this.createCustomUrlInputSetting(apiUrl);
+					});
+			});
+		settings.addExtraButton(button => {
+				button
+					.setIcon('split')
+					.setTooltip('Set WakaTime API Url to Wakapi server')
+					.onClick(async () => {
+						this.plugin.settings.apiUrl = 'https://wakapi.dev/api/compat/wakatime/v1';
+						this.createCustomUrlInputSetting(apiUrl);
+					});
+			});
+	}
+
+	private async testConnection() {
+		const yesterday = moment().subtract(1, 'days').format("YYYY-MM-DD");
+		const now = moment().format("YYYY-MM-DD");
+		const url = this.plugin.settings.apiUrl + `/users/current/summaries?start=${yesterday}&end=${now}&api_key=` + this.plugin.settings.apiKey;
+		try {
+			await request(url);
+			new Notice('WakaTime box: connection test successful', 5000);
+		} catch (error) {
+			console.error("WakaTime box: error requesting WakaTime summary: " + error);
+			new Notice('WakaTime box: error requesting WakaTime summary: ' + error, 5000);
+		}
 	}
 }
 
@@ -355,6 +435,7 @@ export class ManualModal extends Modal {
 			.addText((text) => {
 				const date = moment().format("YYYY-MM-DD");
 				text.setValue(date);
+				this.result = date;
 				text.onChange((value) => {
 					this.result = value
 				})
@@ -366,9 +447,27 @@ export class ManualModal extends Modal {
 					.setButtonText("Submit")
 					.setCta()
 					.onClick(() => {
+						if (!this.checkInput(this.result))  {
+							return;
+						}
 						this.close();
 						this.onResult(this.result);
 					}));
+	}
+
+	private checkInput(result: string):boolean {
+		let dateResult = "";
+		try {
+			dateResult = moment(result).format("YYYY-MM-DD");
+		} catch (e) {
+			new Notice(`WakaTime box: fail due to ${e}`, 5000);
+			return false;
+		}
+		if (dateResult == 'Invalid date') {
+			new Notice(`WakaTime box: fail due to invalid date`, 5000);
+			return false;
+		}
+		return true;
 	}
 
 	onClose() {
