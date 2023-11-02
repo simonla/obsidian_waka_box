@@ -1,7 +1,6 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, request, moment, TFile, normalizePath, Modal } from 'obsidian';
 import { Summary } from './model';
 import { appHasDailyNotesPluginLoaded, createDailyNote, getAllDailyNotes, getDailyNote } from "obsidian-daily-notes-interface";
-import {ApiUrlType, ApiUrlTypeRecord} from "./constants";
 
 // Remember to rename these classes and interfaces!
 
