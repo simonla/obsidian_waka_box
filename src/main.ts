@@ -1,7 +1,6 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, request, moment, TFile, normalizePath, Modal } from 'obsidian';
 import { Summary } from './model';
 import { appHasDailyNotesPluginLoaded, createDailyNote, getAllDailyNotes, getDailyNote } from "obsidian-daily-notes-interface";
-import {ApiUrlType, ApiUrlTypeRecord} from "./constants";
 
 // Remember to rename these classes and interfaces!
 
@@ -368,21 +367,6 @@ class WakaBoxSettingTab extends PluginSettingTab {
 				.onClick(async () => {
 					await this.testConnection();
 				}));
-	}
-
-	private createWakaUrlSettingShow(apiUrl: HTMLDivElement) {
-		apiUrl.empty();
-		new Setting(apiUrl)
-			.setName('WakaTime API Url')
-			.setDesc('The WakaTime API url being used now')
-			.addText(text => text
-				.setValue(this.plugin.settings.apiUrl)
-				.setPlaceholder('https://wakapi.dev/api/compat/wakatime/v1')
-				.onChange(async (value) => {
-					this.plugin.settings.apiUrl = value;
-					await this.plugin.saveSettings();
-				}).inputEl.size = 60)
-			.setDisabled(true);
 	}
 
 	private  createCustomUrlInputSetting(apiUrl: HTMLDivElement) {
