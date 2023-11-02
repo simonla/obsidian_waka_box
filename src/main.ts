@@ -7,16 +7,12 @@ import {ApiUrlType, ApiUrlTypeRecord} from "./constants";
 
 interface WakaBoxPluginSettings {
 	apiKey: string;
-	apiUrlType: string;
 	apiUrl: string;
-	apiCustomUrl: string;
 }
 
 const DEFAULT_SETTINGS: WakaBoxPluginSettings = {
 	apiKey: '',
-	apiUrlType: 'WakaTime',
 	apiUrl: 'https://wakatime.com/api/v1',
-	apiCustomUrl: 'https://wakapi.dev/api/compat/wakatime/v1'
 }
 
 export default class WakaBoxPlugin extends Plugin {
@@ -345,9 +341,7 @@ class WakaBoxSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 		const apiUrlKey = containerEl.createEl('div');
-		const apiUrlType = containerEl.createEl('div');
 		const apiUrl = containerEl.createEl('div');
-
 
 		new Setting(apiUrlKey)
 			.setName('WakaTime API key')
@@ -363,39 +357,8 @@ class WakaBoxSettingTab extends PluginSettingTab {
 				}
 
 			);
-		new Setting(apiUrlType)
-			.setName('WakaTime API url server type')
-			.addDropdown(dropdown => {
-				dropdown
-					.addOptions(ApiUrlTypeRecord)
-					.setValue(this.plugin.settings.apiUrlType)
-					.onChange(async (value) => {
-						this.plugin.settings.apiUrlType = value;
-						await this.plugin.saveSettings();
 
-						if (value != ApiUrlType.Custom) {
-							switch (value) {
-								case ApiUrlType.WakaTime:
-									this.plugin.settings.apiUrl = 'https://wakatime.com/api/v1';
-									break;
-								case ApiUrlType.Wakapi:
-									this.plugin.settings.apiUrl = 'https://wakapi.dev/api/compat/wakatime/v1';
-									break;
-							}
-							this.createWakaUrlSettingShow(apiUrl);
-						} else {
-							this.plugin.settings.apiUrl = this.plugin.settings.apiCustomUrl;
-							await this.plugin.saveSettings();
-							this.createCustomUrlInputSetting(apiUrl);
-						}
-					})
-
-			});
-		if (this.plugin.settings.apiUrlType != ApiUrlType.Custom) {
-			this.createWakaUrlSettingShow(apiUrl);
-		} else {
-			this.createCustomUrlInputSetting(apiUrl);
-		}
+		this.createCustomUrlInputSetting(apiUrl);
 
 		new Setting(containerEl)
 			.setName('test connection')
@@ -425,17 +388,34 @@ class WakaBoxSettingTab extends PluginSettingTab {
 	private  createCustomUrlInputSetting(apiUrl: HTMLDivElement) {
 		apiUrl.empty();
 
-		new Setting(apiUrl)
+		const settings = new Setting(apiUrl)
 			.setName('WakaTime API Url Input')
 			.setDesc('Enter your own Wakapi API url or other server, attention: "/api/compat/wakatime/v1" is required if you use your own Wakapi server')
 			.addText(text => text
-				.setValue(this.plugin.settings.apiCustomUrl)
-				.setPlaceholder('https://wakapi.dev/api/compat/wakatime/v1')
+				.setValue(this.plugin.settings.apiUrl)
+				.setPlaceholder(DEFAULT_SETTINGS.apiUrl)
 				.onChange(async (value) => {
 					this.plugin.settings.apiUrl = value;
-					this.plugin.settings.apiCustomUrl = value;
 					await this.plugin.saveSettings();
-				}).inputEl.size = 60);
+				}).inputEl.size = 45);
+		settings.addExtraButton(button => {
+				button
+					.setIcon('reset')
+					.setTooltip('Set WakaTime API Url to default')
+					.onClick(async () => {
+						this.plugin.settings.apiUrl = DEFAULT_SETTINGS.apiUrl;
+						this.createCustomUrlInputSetting(apiUrl);
+					});
+			});
+		settings.addExtraButton(button => {
+				button
+					.setIcon('split')
+					.setTooltip('Set WakaTime API Url to Wakapi server')
+					.onClick(async () => {
+						this.plugin.settings.apiUrl = 'https://wakapi.dev/api/compat/wakatime/v1';
+						this.createCustomUrlInputSetting(apiUrl);
+					});
+			});
 	}
 
 	private async testConnection() {
