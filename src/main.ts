@@ -6,10 +6,16 @@ import { appHasDailyNotesPluginLoaded, createDailyNote, getAllDailyNotes, getDai
 
 interface WakaBoxPluginSettings {
 	apiKey: string;
+	type: string;
+	insertAfter: string;
+	insertBefore: string;
 }
 
 const DEFAULT_SETTINGS: WakaBoxPluginSettings = {
-	apiKey: ''
+	apiKey: '',
+	type: "Language",
+	insertAfter: '<!-- start of wakabox -->',
+	insertBefore: '<!-- end of wakabox -->'
 }
 
 export default class WakaBoxPlugin extends Plugin {
@@ -140,9 +146,14 @@ export default class WakaBoxPlugin extends Plugin {
 		this.app.vault.process(file, (data: string) => {
 			let box = this.getBoxText(summary);
 			const exists = data.includes("```wakatime");
+			const existsAfter = data.indexOf(this.settings.insertAfter)
+			const existsBefore = data.indexOf(this.settings.insertBefore)
 			if (exists) {
 				data = data.replace(/```wakatime[\s\S]*```/g, box);
-			} else {
+			} else if(existsAfter != -1 && existsBefore != -1) {
+				let boxText = `${this.settings.insertAfter}\n\n${box}\n\n${this.settings.insertBefore}`;
+				data = data.replace(RegExp(`${this.settings.insertAfter}[\\s\\S]*${this.settings.insertBefore}`, "g"), boxText);
+			} else{
 				data += box;
 			}
 			return data;
@@ -157,7 +168,26 @@ export default class WakaBoxPlugin extends Plugin {
 		let maxNameLength = 0;
 		let maxTextLength = 0;
 		let maxPercentLength = 0;
-		summary.data[0].languages.forEach((language) => {
+		let data;
+
+		switch (this.settings.type) {
+			case "Language":
+				data = summary.data[0].languages;
+				break;
+			case "Machine":
+				data = summary.data[0].machines;
+				break;
+			case "OperatingSystem":
+				data = summary.data[0].operating_systems;
+				break;
+			case "Project":
+				data = summary.data[0].projects;
+				break;
+			default:
+				data = summary.data[0].languages;
+		}
+
+		data.forEach((language) => {
 			if (count++ > 5) {
 				return;
 			}
@@ -172,7 +202,7 @@ export default class WakaBoxPlugin extends Plugin {
 			}
 		});
 		count = 0;
-		summary.data[0].languages.forEach((language) => {
+		data.forEach((language) => {
 			if (count++ > 5) {
 				return;
 			}
@@ -333,6 +363,52 @@ class WakaBoxSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 					this.plugin.onGetAPIKey();
 				}));
+
+
+		new Setting(containerEl)
+			.setName("Display Type")
+			.addDropdown((dropdown) => {
+				dropdown.addOptions({
+					Language: "Language",
+					Machine: "Machine",
+					OperatingSystem: "OperatingSystem",
+					Project: "Project",
+				});
+				return dropdown
+					.setValue(this.plugin.settings.type)
+					.onChange(async (value) => {
+						this.plugin.settings.type = value;
+						await this.plugin.saveSettings();
+						this.plugin.onGetAPIKey();
+					});
+			});
+
+		new Setting(this.containerEl)
+			.setName('Insert Between')
+			.setDesc(
+				'Please fill in the range where you want to insert your reading notes in the Daily Notes, remember to modify the Daily Notes template before use 💥Note: The content within the range will be overwritten, so please do not modify the content within the range.'
+			)
+			.addText((input) => {
+				input
+					.setValue(this.plugin.settings.insertAfter)
+					.onChange(async (value: string) => {
+						this.plugin.settings.insertAfter = value;
+						await this.plugin.saveSettings();
+						this.plugin.onGetAPIKey();
+				});
+			})
+			.addButton((btn) => {
+				return (btn.setButtonText('to').buttonEl.style.borderStyle = 'none');
+			})
+			.addText((input) => {
+				input
+					.setValue(this.plugin.settings.insertBefore)
+					.onChange(async (value: string) => {
+						this.plugin.settings.insertBefore = value;
+						await this.plugin.saveSettings();
+						this.plugin.onGetAPIKey();
+				});
+			});
 	}
 }
 
